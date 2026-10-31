@@ -19,10 +19,14 @@ class MainWindow(tk.Tk):
         self.body_frame = SettingsFrame(self, controller=self)
         self.body_frame.grid(row=1, column=0, sticky='ew')
 
-        self.conversion_frame = ConversionFrame(self, controller=self, text='Base Size')
+        self.conversion_frame = ConversionFrame(
+            self, controller=self, text='Base Size'
+            )
         self.conversion_frame.grid(row=2, column=0, sticky='ew')
 
-        self.convert_to_frame = ConversionFrame(self, controller=self, text='Target Size')
+        self.convert_to_frame = ConversionFrame(
+            self, controller=self, text='Target Size'
+            )
         self.convert_to_frame.grid(row=3, column=0, sticky='ew')
         
         self.output_frame = ViewConversion(self, text='Convert')
@@ -67,14 +71,13 @@ class MainWindow(tk.Tk):
                 yvar1 = xyvar1[1]
                 self.conversion_frame.x_var.set(str(xvar1))
                 self.conversion_frame.y_var.set(str(yvar1))
-            
+
             if select_size2 in PageSizes.__members__:
                 xyvar2 = convert_sizes(select_size2, unit)
                 xvar2 = xyvar2[0]
                 yvar2 = xyvar2[1]
                 self.convert_to_frame.x_var.set(str(xvar2))
                 self.convert_to_frame.y_var.set(str(yvar2))
-
 
 
 class HeaderFrame(ttk.Frame):
@@ -85,7 +88,12 @@ class HeaderFrame(ttk.Frame):
 
     def __create_widgets(self):
         main_string = "Page Converter"
-        self.label = ttk.Label(self, text=f"{main_string}", font=("Helvetica", 12, "bold"), justify='center', anchor='center')
+
+        self.label = ttk.Label(
+            self, text=f"{main_string}", font=("Helvetica", 12, "bold"),
+            justify='center', anchor='center'
+            )
+
         self.label.grid(row=0, column=0, sticky='ew')
 
 
@@ -102,8 +110,12 @@ class SettingsFrame(ttk.Labelframe):
         self.label = ttk.Label(self, text="Measurement units:")
         self.label.grid(row=0, column=0)
 
-        self.dimensions_box = ttk.Combobox(self, values=self.dimension_values, width=4)
-        self.dimensions_box.bind("<<ComboboxSelected>>", self.controller.update_units)
+        self.dimensions_box = ttk.Combobox(
+            self, values=self.dimension_values, width=4
+            )
+        self.dimensions_box.bind(
+            "<<ComboboxSelected>>", self.controller.update_units
+            )
         self.dimensions_box.grid(row=0, column=1)
         self.dimensions_box.current(0)
 
@@ -123,9 +135,13 @@ class ConversionFrame(ttk.Labelframe):
         self.size_label = ttk.Label(self, text='Size:')
         self.size_label.grid(row=0, column=0, padx=3)
 
-        self.select_size = ttk.Combobox(self, values=self.combo_sizes, width=8)
+        self.select_size = ttk.Combobox(
+            self, values=self.combo_sizes, width=8
+            )
         self.select_size.grid(row=0, column=1, padx=3)
-        self.select_size.bind("<<ComboboxSelected>>", self.controller.update_entries)
+        self.select_size.bind(
+            "<<ComboboxSelected>>", self.controller.update_entries
+            )
         self.select_size.current(0)
 
         self.x_label = ttk.Label(self, text="Height:")
