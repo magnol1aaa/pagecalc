@@ -28,10 +28,10 @@ class MainWindow(tk.Tk):
             self, controller=self, text='Target Size'
             )
         self.convert_to_frame.grid(row=3, column=0, sticky='ew')
-        
+
         self.output_frame = ViewConversion(self, text='Convert')
         self.output_frame.grid(row=4, column=0, sticky='ew')
-        
+
     def update_entries(self, event):
         print("update entries triggered from: ", event.widget)
 
