@@ -136,13 +136,13 @@ class ConversionFrame(ttk.Labelframe):
         self.size_label.grid(row=0, column=0, padx=3)
 
         self.select_size = ttk.Combobox(
-            self, values=self.combo_sizes, width=8
+            self, values=self.combo_sizes, width=10
             )
         self.select_size.grid(row=0, column=1, padx=3)
         self.select_size.bind(
             "<<ComboboxSelected>>", self.controller.update_entries
             )
-        self.select_size.current(0)
+        self.select_size.set('Select a size')
 
         self.x_label = ttk.Label(self, text="Height:")
         self.x_label.grid(row=0, column=2, padx=3)
