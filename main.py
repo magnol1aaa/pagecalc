@@ -1,13 +1,19 @@
 import tkinter as tk
 from tkinter import ttk
 from enum import Enum
+from tkinter import messagebox
+import math
+"""
+I got my X and Y backwards and i cba fixing it. Just remember that if you read this code.
+
+"""
 
 
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Page Conversion")
-        self.geometry("640x490")
+        self.geometry("640x240")
         self.columnconfigure(0, weight=1)
 
         self.__create_widgets()
@@ -20,14 +26,16 @@ class MainWindow(tk.Tk):
         self.body_frame.grid(row=1, column=0, sticky='ew')
 
         self.conversion_frame = ConversionFrame(
-            self, controller=self, text='Base Size'
+            self, controller=self, text='Base Size', add=False
             )
+        
         self.conversion_frame.grid(row=2, column=0, sticky='ew')
 
         self.convert_to_frame = ConversionFrame(
-            self, controller=self, text='Target Size'
+            self, controller=self, text='Target Size', add=True
             )
         self.convert_to_frame.grid(row=3, column=0, sticky='ew')
+        
 
         self.output_frame = ViewConversion(self, text='Convert')
         self.output_frame.grid(row=4, column=0, sticky='ew')
@@ -121,13 +129,13 @@ class SettingsFrame(ttk.Labelframe):
 
 
 class ConversionFrame(ttk.Labelframe):
-    def __init__(self, container, controller, text):
-        super().__init__(container, text=text)
+    def __init__(self, container, controller, text, add):
+        super().__init__(container, text=text,)
         self.combo_sizes = list(PageSizes.__members__.keys())
-        self.combo_sizes.append('Custom')
         self.controller = controller
         self.x_var = tk.StringVar()
         self.y_var = tk.StringVar()
+        if add: self.add_custom()
         self.__create_widgets()
 
     def __create_widgets(self):
@@ -144,30 +152,213 @@ class ConversionFrame(ttk.Labelframe):
             )
         self.select_size.set('Select a size')
 
-        self.x_label = ttk.Label(self, text="Height:")
+        self.x_label = ttk.Label(self, text="Width:")
         self.x_label.grid(row=0, column=2, padx=3)
 
         self.x_dimensions = ttk.Entry(self, width=6, textvariable=self.x_var)
         self.x_dimensions.grid(row=0, column=3, padx=6)
         self.x_dimensions.state(['disabled'])
 
-        self.y_label = ttk.Label(self, text="Width:")
+        self.y_label = ttk.Label(self, text="Height:")
         self.y_label.grid(row=0, column=4, padx=3)
 
         self.y_dimensions = ttk.Entry(self, width=6, textvariable=self.y_var)
         self.y_dimensions.grid(row=0, column=5, padx=6, pady=6)
         self.y_dimensions.state(['disabled'])
-
+    
+    def add_custom(self):
+        self.combo_sizes.append('Custom')
 
 class ViewConversion(ttk.Labelframe):
     def __init__(self, container, text):
         super().__init__(container, text=text)
+        self.container = container
         self.__create_widgets()
 
     def __create_widgets(self):
-        self.submit = ttk.Button(self, text='Submit')
+        self.submit = ttk.Button(self, text='Submit', command=self.__display_page)
         self.submit.grid(row=0, column=0, padx=6)
+        self.caution = ttk.Label(self, text='Custom sizes that are less than 20mm of difference from the base page may look buggy.')
+        self.caution.grid(row=0, column=1)
+    
+    def __display_page(self):
+        pc = calculate_size(self.container)
+        match pc:
+            case ErrorCodes.BlankValue:
+                messagebox.showwarning(title='Warning', message="Please ensure entries aren't blank.")
+            case ErrorCodes.BaseSmall:
+                messagebox.showwarning(title="Warning", message="Ensure the base page is not smaller than the conversion page.")
+            case ErrorCodes.BothEqual:
+                messagebox.showwarning(title="Warning", message="Both pages cannot be equally sized.")
+            case ErrorCodes.WidthEqual:
+                messagebox.showwarning(title="Warning", message="Widths cannot be equal.")
+            case ErrorCodes.HeightEqual:
+                messagebox.showwarning(title="Warning", message="Heights cannot be equal.")
+            case _:
+                page = PageWindow(self, pc)
+                print(pc)
 
+class PageWindow(tk.Toplevel):
+    def __init__(self, master, pc):
+        super().__init__(master)
+        self.master = master
+        self.pc = pc
+        self.geometry("520x695")
+        self.resizable(False, False)
+        self.__create_widgets()
+    
+    def __create_widgets(self):
+        self.canvas = tk.Canvas(self, width=420, height=595, background='white')
+        self.canvas.pack(pady=50)
+        self.__calculate_canvas(self.pc)
+    
+    def __calculate_canvas(self, pc):
+        units = self.master.container.body_frame.dimensions_box.get()
+        main_window = self.master.container
+        bsize = pc['p_base']
+        csize = pc['p_conv']
+        conv_type = pc['conv_type']
+        
+        match conv_type:
+            case 'Standard':
+                a = int(bsize[1:])
+                b = int(csize[1:])
+                
+                c = b - a
+                
+                canvas_size = PagePixels.A5.value 
+                
+                pheight = canvas_size[1]
+                pwidth = canvas_size[0]
+                
+                nheight = round(pheight / (2 ** (c / 2)))
+                nwidth = round(pwidth / (2 ** (c / 2)))
+                
+                print(f'Original: {pheight}, {pwidth}')
+                print({'Height': nheight, 'Width': nwidth})
+                
+                pad_w = (pwidth - nwidth) // 2
+                pad_h = (pheight - nheight) // 2
+                
+                x1 = pad_w + nwidth
+                y1 = pad_h + nheight
+            
+            case 'Custom':
+                bheight = pc['conv_x']
+                bwidth = pc['conv_y'] 
+                canvas_size = PageSizes.A5.value
+                base_size = PageSizes[pc['p_base']].value
+                canvas_pix = PagePixels.A5.value
+                
+                # scale from base size to canvas size
+                # mes x (a5/a10)
+                
+                bheight = pc['conv_y'] * (canvas_size[1] / base_size[1])
+                bwidth = pc['conv_x'] * (canvas_size[0] / base_size[0])
+                
+                #mm to pix, add options for cm and in.
+                
+                match units:
+                    
+                    case 'MM':
+                        nheight = (bheight / 25.4) * 72
+                        nwidth = (bwidth / 25.4) * 72
+                    case 'IN':
+                        nheight = bheight * 72
+                        nwidth = bwidth * 72
+                    case 'CM':
+                        nheight = (bheight / 2.54) * 72
+                        nwidth = (bwidth / 2.54) * 72
+                
+                diffy = canvas_pix[1] - nheight
+                diffx = canvas_pix[0] - nwidth
+                # 120mm x (210/1189) = 21.19 mm
+                
+                pad_h = diffy / 2
+                pad_w = diffx / 2
+                
+                x1 = pad_w + nwidth
+                y1 = pad_h + nheight
+                
+                self.canvas.create_rectangle(pad_w, pad_h, x1, y1, outline='black')
+                print('Custom')
+            case _:
+                return
+        
+        if pad_h < 20 or pad_w < 20:
+            #We need to move the fuckin text inside da square.
+            xtext_x = pad_w + (nwidth / 2)
+            xtext_y = pad_h + 20
+            
+            ytext_x = pad_w + nwidth - 20
+            ytext_y = pad_h + (nheight / 2)
+        else:
+            xtext_x = (pad_w * 1.5) + nwidth
+            xtext_y = pad_h + (nheight / 2) + 20
+            
+            ytext_x = pad_w + (nwidth / 2) + 20
+            ytext_y = (pad_h / 2)
+        
+        yline_x1 = pad_w + (nwidth / 2)
+        yline_y1 = 0
+        
+        yline_x2 = yline_x1
+        yline_y2 = pad_h
+        
+        xline_x1 = (pad_w * 2) + nwidth
+        xline_y1 = pad_h + (nheight / 2)
+        
+        xline_x2 = pad_w + nwidth
+        xline_y2 = xline_y1
+        
+        self.canvas.create_rectangle(pad_w, pad_h, x1, y1, outline='black')
+        self.canvas.create_line(yline_x1, yline_y1, yline_x2, yline_y2, dash=(4, 4), fill='black', width=2)
+        self.canvas.create_line(xline_x1, xline_y1, xline_x2, xline_y2, dash=(4, 4), fill='black', width=2)
+        self.canvas.create_text(xtext_x, xtext_y, text=f'{pc['x_margin']}')
+        self.canvas.create_text(ytext_x, ytext_y, text=f'{pc['y_margin']}')
+        
+        
+        
+        
+
+
+def calculate_size(master):
+    try:
+        pbx = float(master.conversion_frame.x_var.get())
+        pby = float(master.conversion_frame.y_var.get())
+        pbsize = master.conversion_frame.select_size.get()
+        
+        pcx = float(master.convert_to_frame.x_var.get())
+        pcy = float(master.convert_to_frame.y_var.get())
+        pcsize = master.convert_to_frame.select_size.get()
+    except ValueError:
+        return ErrorCodes.BlankValue
+    
+    if pcsize == 'Custom' or pbsize == 'Custom':
+        conv_type = 'Custom'
+    else:
+        conv_type = 'Standard'
+        
+    if pbx < pcx or pby < pcy:
+        return ErrorCodes.BaseSmall
+    
+    if pbx == pcx and pby == pcy:
+        return ErrorCodes.BothEqual
+    elif pbx == pcx:
+        return ErrorCodes.HeightEqual
+    elif pby == pcy:
+        return ErrorCodes.WidthEqual
+        
+    diffx = pbx - pcx
+    diffy = pby - pcy
+    
+    x_margin = diffx / 2
+    y_margin = diffy / 2
+    
+    toreturn = {'x_margin': round(x_margin, 1), 'y_margin': round(y_margin, 1), 'p_base': pbsize, 'p_conv': pcsize, 'conv_type': conv_type, 'conv_x': pcx, 'conv_y': pcy}
+    
+    return toreturn
+    
 
 def convert_sizes(select_size, unit):
     size_val = PageSizes[select_size].value
@@ -203,12 +394,34 @@ class PageSizes(Enum):
     A9 = (37, 52)
     A10 = (26, 37)
 
+class PagePixels(Enum):
+    #Size in PX
+    A0 = (2384, 3370)
+    A1 = (1684, 2384)
+    A2 = (1191, 1684)
+    A3 = (842, 1191)
+    A4 = (595,  842)
+    A5 = (420, 595)
+    A6 = (298, 420)
+    A7 = (210, 298)
+    A8 = (147, 210)
+    A9 = (105, 147)
+    A10 = (74, 105)
 
 class MeasurementUnits(Enum):
     # Converting from MM (stored in Page Sizes)
     CM = {'Operator': 'div', 'Value': 10}
     MM = {'Operator': 'mult', 'Value': 1}
     IN = {'Operator': 'div', 'Value': 25.4}
+
+
+class ErrorCodes(Enum):
+    # Error codes
+    BlankValue = 'Blank'
+    BaseSmall = 'BaseSmall'
+    BothEqual = 'BothEqual'
+    HeightEqual = 'HeightEqual'
+    WidthEqual = 'WidthEqual'
 
 
 if __name__ == "__main__":
